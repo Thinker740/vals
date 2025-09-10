@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UBG Gloves Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; }
+    h1 { text-align: center; color: #333; }
+    table { border-collapse: collapse; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+    th { background: #007bff; color: white; }
+    tr:nth-child(even) { background-color: #f2f2f2; }
+    input[type="text"] { 
+      padding: 12px; 
+      margin: 20px 0; 
+      font-size: 16px; 
+      width: 100%; 
+      box-sizing: border-box; 
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .table-container {
+      max-height: 500px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .status-message { text-align: center; color: #6c757d; font-style: italic; padding: 20px; }
+
+    @media (max-width: 600px) {
+      input[type="text"] { margin: 10px 0; }
+      th, td { padding: 8px; }
+      .table-container { max-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>UBG Gloves Viewer</h1>
+
+  <input type="text" id="searchBox" placeholder="🔍 Search by name or price..." onkeyup="searchItems()">
+
+  <div id="tableSection" class="table-container">
+    <table id="itemsTable">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        </tbody>
+    </table>
+  </div>
+  
+  <script>
+    // Use the CSV export link for public sheets!
+    const googleSheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQLTuUK0WZeT9eW1iv2nM8GvhXNBPKsDjWRk9Z6hfub0wztDVk7LkFd_YtCbX7L1UUz8Dstvl6Zqsm5/pub?output=csv';
+
+    let items = [];
+
+    function renderTable(displayData, message = '') {
+      const tbody = document.querySelector("#itemsTable tbody");
+      tbody.innerHTML = ""; 
+      if (message) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td colspan="2" class="status-message">${message}</td>`;
+        tbody.appendChild(row);
+        return;
+      }
+      if (!displayData || displayData.length === 0) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td colspan="2" class="status-message">No items found matching your search.</td>`;
+        tbody.appendChild(row);
+        return;
+      }
+      displayData.forEach(item => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.price}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function searchItems() {
+      const query = document.getElementById("searchBox").value.toLowerCase().trim();
+      if (!query) {
+        renderTable(items); 
+        return;
+      }
+      const filtered = items.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.price.toLowerCase().includes(query)
+      );
+      renderTable(filtered);
+    }
+    
+    async function loadDataFromSheet() {
+      renderTable([], 'Loading values...');
+      try {
+        const response = await fetch(googleSheetURL);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const csvText = await response.text();
+        items = csvText
+          .trim()
+          .split('\n')
+          .slice(1)
+          .map(line => {
+            // A simple CSV splitter, works if no commas in fields.
+            const columns = line.split(',');
+            return { name: columns[0].trim(), price: columns[1].trim() };
+          });
+        renderTable(items);
+      } catch (error) {
+        console.error('Error fetching or parsing sheet data:', error);
+        renderTable([], 'Failed to load values. Please check the URL or try again later.');
+      }
+    }
+
+    window.onload = function() {
+      loadDataFromSheet();
+    };
+  </script>
+</body>
+</html>
