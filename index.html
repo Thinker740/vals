@@ -152,12 +152,12 @@ async function fetchFromSheet() {
     items = [];
     lines.forEach((line, i) => {
       const parts = line.split(",");
-      if (i === 0 && /name|glove/i.test(parts[0]) && /value|price/i.test(parts[1])) {
+      if (i === 0 && /name|glove/i.test(parts[0]) && /value|price/i.test(parts[parts.length - 1])) {
         return; // skip header row
       }
       if (parts.length >= 2) {
-        const name = parts[0].trim();
-        const price = parts[1].trim();
+        const price = parts.pop().trim();         // last column = price
+        const name = parts.join(" ").trim();      // rest = name
         items.push({ name, price });
       }
     });
