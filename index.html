@@ -2,127 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>UBG Gloves Viewer</title>
+  <title>Glove Manager</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f8f9fa; }
-    h1 { text-align: center; color: #333; }
-    table { border-collapse: collapse; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-    th { background: #007bff; color: white; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-    input[type="text"] { 
-      padding: 12px; 
-      margin: 20px 0; 
-      font-size: 16px; 
-      width: 100%; 
-      box-sizing: border-box; 
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    .table-container {
-      max-height: 500px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    .status-message { text-align: center; color: #6c757d; font-style: italic; padding: 20px; }
-
-    @media (max-width: 600px) {
-      input[type="text"] { margin: 10px 0; }
-      th, td { padding: 8px; }
-      .table-container { max-height: 400px; }
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f8f8f8; }
+    h1 { text-align: center; }
+    button { margin: 5px; padding: 6px 12px; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
+    #itemsTable tbody tr:hover { background: #f0f0f0; }
+    #searchBox { width: 60%; padding: 10px; font-size: 16px; margin: 15px auto; display: block; }
+    .table-container { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; background: #fff; }
+    .status-message { text-align: center; font-style: italic; color: #555; }
+    .copy-toggle { margin: 10px 0; text-align: center; }
+    .controls { text-align: center; margin: 10px 0; }
   </style>
 </head>
 <body>
-  <h1>UBG Gloves Viewer</h1>
+  <h1>Glove Manager</h1>
 
-  <input type="text" id="searchBox" placeholder="🔍 Search by name or price..." onkeyup="searchItems()">
+  <!-- Search -->
+  <input type="text" id="searchBox" placeholder="🔍 Search gloves..." onkeyup="searchItems()">
 
+  <!-- Toggle for copy mode -->
+  <div class="copy-toggle">
+    <label>
+      Copy Mode:
+      <select id="copyMode" onchange="renderTable(items)">
+        <option value="full">Full</option>
+        <option value="short">Short</option>
+      </select>
+    </label>
+  </div>
+
+  <!-- Copy all button -->
+  <div class="controls">
+    <button onclick="copyAll()">Copy All</button>
+  </div>
+
+  <!-- Table -->
   <div id="tableSection" class="table-container">
     <table id="itemsTable">
       <thead>
         <tr>
           <th>Item</th>
           <th>Price</th>
+          <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
-        </tbody>
+      <tbody></tbody>
     </table>
   </div>
-  
+
   <script>
-    // Use the CSV export link for public sheets!
-    const googleSheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQLTuUK0WZeT9eW1iv2nM8GvhXNBPKsDjWRk9Z6hfub0wztDVk7LkFd_YtCbX7L1UUz8Dstvl6Zqsm5/pub?output=csv';
-
     let items = [];
+    let currentFiltered = null;
 
-    function renderTable(displayData, message = '') {
+    // Render table
+    function renderTable(displayData = items, message = '') {
       const tbody = document.querySelector("#itemsTable tbody");
-      tbody.innerHTML = ""; 
+      tbody.innerHTML = "";
       if (message) {
         const row = document.createElement("tr");
-        row.innerHTML = `<td colspan="2" class="status-message">${message}</td>`;
+        row.innerHTML = `<td colspan="3" class="status-message">${message}</td>`;
         tbody.appendChild(row);
         return;
       }
       if (!displayData || displayData.length === 0) {
         const row = document.createElement("tr");
-        row.innerHTML = `<td colspan="2" class="status-message">No items found matching your search.</td>`;
+        row.innerHTML = `<td colspan="3" class="status-message">No items found.</td>`;
         tbody.appendChild(row);
         return;
       }
+      currentFiltered = displayData; // save filtered data
+      const mode = document.getElementById("copyMode").value;
       displayData.forEach(item => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${item.name}</td>
           <td>${item.price}</td>
+          <td>
+            <button onclick="copyItem('${item.name}','${item.price}','${mode}')">Copy</button>
+            <button onclick="copyPrice('${item.price}')">Copy Price</button>
+          </td>
         `;
         tbody.appendChild(row);
       });
     }
 
-    function searchItems() {
-      const query = document.getElementById("searchBox").value.toLowerCase().trim();
-      if (!query) {
-        renderTable(items); 
+    // Copy item (full or short)
+    function copyItem(name, price, mode) {
+      let text;
+      if (mode === "short") {
+        const parts = name.split(" ");
+        text = parts.slice(1).join(" ") + " " + price;
+      } else {
+        text = name + " " + price;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Copied: " + text);
+      });
+    }
+
+    // Copy only price
+    function copyPrice(price) {
+      navigator.clipboard.writeText(price).then(() => {
+        alert("Price copied: " + price);
+      });
+    }
+
+    // Copy all (respects filter + toggle)
+    function copyAll() {
+      const mode = document.getElementById("copyMode").value;
+      const data = currentFiltered || items;
+      if (!data || data.length === 0) {
+        alert("No items to copy.");
         return;
       }
+      let content = data.map(item => {
+        if (mode === "short") {
+          const parts = item.name.split(" ");
+          return parts.slice(1).join(" ") + " " + item.price;
+        } else {
+          return item.name + " " + item.price;
+        }
+      }).join("\n");
+      navigator.clipboard.writeText(content).then(() => {
+        alert("Copied all items:\n\n" + content);
+      });
+    }
+
+    // Search
+    function searchItems() {
+      const query = document.getElementById("searchBox").value.toLowerCase();
       const filtered = items.filter(item =>
         item.name.toLowerCase().includes(query) ||
         item.price.toLowerCase().includes(query)
       );
       renderTable(filtered);
     }
-    
-    async function loadDataFromSheet() {
-      renderTable([], 'Loading values...');
+
+    // Fetch from Google Sheet CSV
+    async function fetchFromSheet() {
       try {
-        const response = await fetch(googleSheetURL);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const csvText = await response.text();
-        items = csvText
-          .trim()
-          .split('\n')
-          .slice(1)
-          .map(line => {
-            // A simple CSV splitter, works if no commas in fields.
-            const columns = line.split(',');
-            return { name: columns[0].trim(), price: columns[1].trim() };
-          });
+        const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQLTuUK0WZeT9eW1iv2nM8GvhXNBPKsDjWRk9Z6hfub0wztDVk7LkFd_YtCbX7L1UUz8Dstvl6Zqsm5/pub?output=csv');
+        const text = await response.text();
+        const lines = text.trim().split("\n");
+        items = [];
+        lines.forEach((line, i) => {
+          const parts = line.split(",");
+          if (i === 0 && /name|glove/i.test(parts[0]) && /value|price/i.test(parts[1])) {
+            return; // skip header
+          }
+          if (parts.length >= 2) {
+            items.push({ name: parts[0].trim(), price: parts[1].trim() });
+          }
+        });
         renderTable(items);
-      } catch (error) {
-        console.error('Error fetching or parsing sheet data:', error);
-        renderTable([], 'Failed to load values. Please check the URL or try again later.');
+      } catch (err) {
+        console.error("Error fetching CSV:", err);
+        renderTable([], "Failed to load data.");
       }
     }
 
-    window.onload = function() {
-      loadDataFromSheet();
-    };
+    window.onload = fetchFromSheet;
   </script>
 </body>
 </html>
