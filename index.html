@@ -1,3 +1,4 @@
+\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -142,28 +143,30 @@
       renderTable(filtered);
     }
 
-    // Fetch from Google Sheet CSV
-    async function fetchFromSheet() {
-      try {
-        const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vQLTuUK0WZeT9eW1iv2nM8GvhXNBPKsDjWRk9Z6hfub0wztDVk7LkFd_YtCbX7L1UUz8Dstvl6Zqsm5/pub?output=csv');
-        const text = await response.text();
-        const lines = text.trim().split("\n");
-        items = [];
-        lines.forEach((line, i) => {
-          const parts = line.split(",");
-          if (i === 0 && /name|glove/i.test(parts[0]) && /value|price/i.test(parts[1])) {
-            return; // skip header
-          }
-          if (parts.length >= 2) {
-            items.push({ name: parts[0].trim(), price: parts[1].trim() });
-          }
-        });
-        renderTable(items);
-      } catch (err) {
-        console.error("Error fetching CSV:", err);
-        renderTable([], "Failed to load data.");
+   // Fetch from Google Sheet CSV
+async function fetchFromSheet() {
+  try {
+    const response = await fetch("YOUR_CSV_LINK_HERE");
+    const text = await response.text();
+    const lines = text.trim().split("\n");
+    items = [];
+    lines.forEach((line, i) => {
+      const parts = line.split(",");
+      if (i === 0 && /name|glove/i.test(parts[0]) && /value|price/i.test(parts[1])) {
+        return; // skip header row
       }
-    }
+      if (parts.length >= 2) {
+        const name = parts[0].trim();
+        const price = parts[1].trim();
+        items.push({ name, price });
+      }
+    });
+    renderTable(items);
+  } catch (err) {
+    console.error("Error fetching CSV:", err);
+    renderTable([], "Failed to load data.");
+  }
+}
 
     window.onload = fetchFromSheet;
   </script>
